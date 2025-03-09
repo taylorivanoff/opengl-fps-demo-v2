@@ -551,12 +551,11 @@ public class FPSGame {
                 (t1MinZ <= t2MaxZ && t1MaxZ >= t2MinZ);
     }
 
-    // Check collisions between bullet entities and other collidable objects.
     private void checkCollisions() {
         List<Integer> bulletsToRemove = new ArrayList<>();
-        // Iterate over bullet entities.
-        for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> bulletEntry : ecs.getEntities()
-                .entrySet()) {
+        // Iterate over a snapshot copy of the entities
+        for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> bulletEntry : new ArrayList<>(
+                ecs.getEntities().entrySet())) {
             int bulletId = bulletEntry.getKey();
             Map<Class<? extends Component>, Component> bulletComps = bulletEntry.getValue();
             if (!bulletComps.containsKey(BulletComponent.class) || !bulletComps.containsKey(ColliderComponent.class))
@@ -564,9 +563,9 @@ public class FPSGame {
             TransformComponent bulletTransform = (TransformComponent) bulletComps.get(TransformComponent.class);
             ColliderComponent bulletCollider = (ColliderComponent) bulletComps.get(ColliderComponent.class);
 
-            // Check against all other collidable entities (skip bullets)
-            for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> otherEntry : ecs.getEntities()
-                    .entrySet()) {
+            // Iterate over a snapshot copy for the inner loop too.
+            for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> otherEntry : new ArrayList<>(
+                    ecs.getEntities().entrySet())) {
                 int otherId = otherEntry.getKey();
                 if (otherId == bulletId)
                     continue;
@@ -578,7 +577,6 @@ public class FPSGame {
                 TransformComponent otherTransform = (TransformComponent) otherComps.get(TransformComponent.class);
                 ColliderComponent otherCollider = (ColliderComponent) otherComps.get(ColliderComponent.class);
                 if (checkCollision(bulletTransform, bulletCollider, otherTransform, otherCollider)) {
-                    // On collision, mark bullet for removal and spawn an explosion.
                     bulletsToRemove.add(bulletId);
                     spawnExplosion(bulletTransform.x, bulletTransform.y, bulletTransform.z);
                     break;
