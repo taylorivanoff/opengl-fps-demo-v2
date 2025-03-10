@@ -1,32 +1,41 @@
 package com.example;
 
-import java.nio.*;
-import java.util.*;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import org.joml.Math;
-import org.joml.*;
-import static org.lwjgl.glfw.Callbacks.*;
+import org.joml.Vector3f;
+import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
 import static org.lwjgl.glfw.GLFW.*;
-import org.lwjgl.glfw.*;
-import static org.lwjgl.glfw.Callbacks.*;
-import static org.lwjgl.glfw.GLFW.*;
-import org.lwjgl.opengl.*;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
-import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.opengl.GL30.*;
-import org.lwjgl.system.*;
-import static org.lwjgl.system.MemoryUtil.*;
+import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+import static org.lwjgl.opengl.GL30.glBindVertexArray;
+import static org.lwjgl.opengl.GL30.glGenVertexArrays;
+import org.lwjgl.system.MemoryUtil;
+import static org.lwjgl.system.MemoryUtil.NULL;
 
-import com.bulletphysics.collision.shapes.*;
-import com.bulletphysics.dynamics.*;
-import com.bulletphysics.linearmath.*;
+import com.bulletphysics.collision.shapes.BoxShape;
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
+import com.bulletphysics.linearmath.DefaultMotionState;
+import com.bulletphysics.linearmath.Transform;
 import com.example.components.*;
-import com.example.entities.*;
-import com.example.input.*;
-import com.example.physics.*;
-import com.example.rendering.*;
-import com.example.systems.*;
+import com.example.entities.Camera;
+import com.example.entities.Rifle;
+import com.example.entities.Weapon;
+import com.example.input.PlayerController;
+import com.example.physics.PhysicsWorld;
+import com.example.rendering.Mesh;
+import com.example.rendering.Renderer;
+import com.example.rendering.ShaderProgram;
+import com.example.rendering.UIRenderer;
+import com.example.systems.AISystem;
 
 public class FPSGame {
     private long window;
@@ -57,7 +66,7 @@ public class FPSGame {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 
-        window = glfwCreateWindow(1280, 720, "Java FPS", NULL, NULL);
+        window = glfwCreateWindow(1280, 720, "V2 FPS Shooting AI Physics", NULL, NULL);
 
         if (window == NULL)
             throw new RuntimeException("Failed to create GLFW window");
@@ -75,7 +84,7 @@ public class FPSGame {
         ecs = new ECSRegistry();
         physicsWorld = new PhysicsWorld();
         cubeMesh = createCubeMesh();
-        Mesh cylinderMesh = createCylinderMesh(32, 2f, 1f);
+        Mesh cylinderMesh = createCylinderMesh(32, 3f, 1f);
 
         // Create enemy entity
         int enemyEntity = ecs.createEntity();
