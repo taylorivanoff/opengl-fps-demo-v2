@@ -3,6 +3,7 @@ package com.example;
 import java.nio.*;
 import java.util.*;
 
+import org.joml.Math;
 import org.joml.*;
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
@@ -25,11 +26,13 @@ import com.example.entities.*;
 import com.example.input.*;
 import com.example.physics.*;
 import com.example.rendering.*;
+import com.example.systems.*;
 
 public class FPSGame {
     private long window;
     private ECSRegistry ecs;
     private PhysicsWorld physicsWorld;
+    private AISystem aiSystem;
     private PlayerController playerController;
     private UIRenderer uiRenderer;
     private Renderer renderer;
@@ -71,7 +74,25 @@ public class FPSGame {
 
         ecs = new ECSRegistry();
         physicsWorld = new PhysicsWorld();
+        cubeMesh = createCubeMesh();
+        Mesh cylinderMesh = createCylinderMesh(32, 2f, 1f);
 
+        // Create enemy entity
+        int enemyEntity = ecs.createEntity();
+        ecs.addComponent(enemyEntity, new TransformComponent(5.0f, 0.0f, -5.0f));
+        ecs.addComponent(enemyEntity, new MeshComponent(cylinderMesh));
+        ecs.addComponent(enemyEntity, new ColliderComponent(2.0f, 2.0f, 2.0f));
+        ecs.addComponent(enemyEntity, new HealthComponent(100));
+        // ecs.addComponent(enemyEntity, new Weapon.Pistol());
+        AIComponent ai = new AIComponent();
+        ai.waypoints = new Vector3f[] {
+                new Vector3f(5f, 0f, -5f),
+                new Vector3f(-5f, 0f, -5f)
+        };
+        ecs.addComponent(enemyEntity, ai);
+
+        // Initialize AI System
+        aiSystem = new AISystem(ecs, physicsWorld);
         // Create player entity (used for input and camera)
         playerEntity = ecs.createEntity();
         ecs.addComponent(playerEntity, new TransformComponent(0.0f, 0.0f, 3.0f));
@@ -98,7 +119,6 @@ public class FPSGame {
         // Add the wall body to the physics world
         physicsWorld.addRigidBody(wallBody);
 
-        cubeMesh = createCubeMesh();
         int cubeEntity = ecs.createEntity();
         ecs.addComponent(cubeEntity, new TransformComponent(0.0f, 0.0f, -5.0f));
         ecs.addComponent(cubeEntity, new MeshComponent(cubeMesh));
@@ -169,6 +189,96 @@ public class FPSGame {
         weapon = new Rifle();
 
         lastFrameTime = (float) glfwGetTime();
+    }
+
+    private Mesh createCylinderMesh(int segments, float height, float radius) {
+        List<Float> vertices = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+
+        // Bottom center vertex
+        vertices.add(0f);
+        vertices.add(-height / 2);
+        vertices.add(0f); // Position
+        vertices.add(1f);
+        vertices.add(1f);
+        vertices.add(1f); // Color
+
+        // Bottom circle
+        for (int i = 0; i < segments; i++) {
+            float angle = (float) (2 * Math.PI * i / segments);
+            float x = (float) Math.cos(angle) * radius;
+            float z = (float) Math.sin(angle) * radius;
+            vertices.add(x);
+            vertices.add(-height / 2);
+            vertices.add(z); // Position
+            vertices.add(1f);
+            vertices.add(0f);
+            vertices.add(0f); // Color
+        }
+
+        // Top center vertex
+        vertices.add(0f);
+        vertices.add(height / 2);
+        vertices.add(0f); // Position
+        vertices.add(1f);
+        vertices.add(1f);
+        vertices.add(1f); // Color
+
+        // Top circle
+        for (int i = 0; i < segments; i++) {
+            float angle = (float) (2 * Math.PI * i / segments);
+            float x = (float) Math.cos(angle) * radius;
+            float z = (float) Math.sin(angle) * radius;
+            vertices.add(x);
+            vertices.add(height / 2);
+            vertices.add(z); // Position
+            vertices.add(0f);
+            vertices.add(0f);
+            vertices.add(1f); // Color
+        }
+
+        // Bottom face indices
+        for (int i = 1; i <= segments; i++) {
+            indices.add(0);
+            indices.add(i);
+            indices.add(i % segments + 1);
+        }
+
+        // Top face indices
+        int topCenter = segments + 1;
+        for (int i = 1; i <= segments; i++) {
+            indices.add(topCenter);
+            indices.add(topCenter + i);
+            indices.add(topCenter + (i % segments) + 1);
+        }
+
+        // Side faces
+        for (int i = 1; i <= segments; i++) {
+            int next = (i % segments) + 1;
+            int bottom = i;
+            int top = i + segments + 1;
+            int topNext = next + segments + 1;
+
+            indices.add(bottom);
+            indices.add(next);
+            indices.add(top);
+
+            indices.add(next);
+            indices.add(topNext);
+            indices.add(top);
+        }
+
+        // Convert lists to arrays
+        float[] verticesArray = new float[vertices.size()];
+        int[] indicesArray = new int[indices.size()];
+        for (int i = 0; i < vertices.size(); i++) {
+            verticesArray[i] = vertices.get(i);
+        }
+        for (int i = 0; i < indices.size(); i++) {
+            indicesArray[i] = indices.get(i);
+        }
+
+        return new Mesh(verticesArray, indicesArray);
     }
 
     private Mesh createCubeMesh() {
@@ -280,6 +390,7 @@ public class FPSGame {
                 ColliderComponent otherCollider = (ColliderComponent) otherComps.get(ColliderComponent.class);
 
                 if (checkCollision(bulletTransform, bulletCollider, otherTransform, otherCollider)) {
+                    System.out.println("Collided");
                     bulletsToRemove.add(bulletId);
 
                     spawnExplosion(bulletTransform.x, bulletTransform.y, bulletTransform.z);
@@ -373,10 +484,11 @@ public class FPSGame {
             TransformComponent playerTransform = ecs.getComponent(playerEntity, TransformComponent.class);
             camera.position.set(playerTransform.x, playerTransform.y, playerTransform.z);
 
+            checkCollisions();
             updatePhysics(dt);
+            aiSystem.update(dt);
 
             updateBullets(dt);
-            checkCollisions();
             updateExplosions(dt);
 
             renderer.render();

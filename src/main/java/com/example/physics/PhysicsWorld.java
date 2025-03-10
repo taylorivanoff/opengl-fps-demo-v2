@@ -1,10 +1,11 @@
 package com.example.physics;
 
-import com.bulletphysics.collision.broadphase.DbvtBroadphase;
-import com.bulletphysics.collision.dispatch.CollisionDispatcher;
-import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
-import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
-import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import javax.vecmath.*;
+
+import com.bulletphysics.collision.broadphase.*;
+import com.bulletphysics.collision.dispatch.*;
+import com.bulletphysics.dynamics.*;
+import com.bulletphysics.dynamics.constraintsolver.*;
 
 public class PhysicsWorld {
     private DiscreteDynamicsWorld dynamicsWorld;
@@ -28,5 +29,13 @@ public class PhysicsWorld {
 
     public void stepSimulation(float dt) {
         dynamicsWorld.stepSimulation(dt, 10);
+    }
+
+    public boolean raycast(Vector3f from, Vector3f to) {
+        CollisionWorld.ClosestRayResultCallback callback = new CollisionWorld.ClosestRayResultCallback(from, to);
+
+        dynamicsWorld.rayTest(from, to, callback);
+
+        return callback.hasHit();
     }
 }
