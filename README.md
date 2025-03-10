@@ -1,25 +1,29 @@
-# OpenGL FPS Shooting AI Physics Demo v2
+# OpenGL FPS Demo with ECS, Shooting, AI and Physics
 
 ## Overview
-This project is a 3D graphics application built using Java and the Lightweight Java Game Library (LWJGL). 
+This is a basic first-person shooter (FPS) implemented in Java using LWJGL for OpenGL rendering and an Entity Component System (ECS) for game logic. It includes player movement and shooting mechanics.
 
 ## Features
-- **OpenGL Rendering**: Real-time 3D rendering with modern OpenGL.
-- **LWJGL**: Provides efficient bindings for OpenGL.
+- **Entity Component System (ECS)** for managing game entities efficiently
+- **Player Movement (WASD)** with smooth control
+- **Bullet Physics** using jBullet (can be extended further)
+- **Basic UI** (crosshair rendering)
 
-## Prerequisites
-- Java 8 or later
-- LWJGL (Lightweight Java Game Library)
+## Installation & Setup
+### Prerequisites
+- Java 17 or later
+- LWJGL 3
+- jBullet Physics
+- Gradle or Maven for dependency management
 
-## Installation
-1. Clone the repository:
+### Building & Running
+1. **Clone the repository:**
    ```sh
-   git clone <repository-url>
+   git clone https://github.com/opengl-fps-demo-v2/fps-game.git
+   cd fps-game
    ```
-2. Install dependencies with Maven, include natives from your platform
+2. **Install dependencies with maven **
 
-## Usage
-- Run the application to start rendering 3D objects.
-
-## Contact
-For any questions or contributions, feel free to reach out via the project's repository.
+## Controls
+- **WASD** - Move forward, backward, left, right
+- **Left Click** - Fire bullets
