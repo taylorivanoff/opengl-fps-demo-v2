@@ -1,5 +1,6 @@
 package com.example;
 
+import java.nio.*;
 import java.util.*;
 
 import org.joml.*;
@@ -10,6 +11,10 @@ import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
 import org.lwjgl.opengl.*;
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL30.*;
+import org.lwjgl.system.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import com.bulletphysics.collision.shapes.*;
@@ -26,6 +31,7 @@ public class FPSGame {
     private ECSRegistry ecs;
     private PhysicsWorld physicsWorld;
     private PlayerController playerController;
+    private UIRenderer uiRenderer;
     private Renderer renderer;
     private Weapon weapon;
     private Camera camera;
@@ -62,7 +68,7 @@ public class FPSGame {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        
+
         ecs = new ECSRegistry();
         physicsWorld = new PhysicsWorld();
 
@@ -80,7 +86,7 @@ public class FPSGame {
         // Set up the transform for the wall's position
         Transform wallTransform = new Transform();
         wallTransform.setIdentity();
-        wallTransform.origin.set(0f, 2.5f, -10f);
+        wallTransform.origin.set(0f, 0f, -10f);
 
         // Static objects use zero mass
         float mass = 0f;
@@ -103,8 +109,34 @@ public class FPSGame {
         // Create a shared bullet mesh.
         bulletMesh = createCubeMesh();
 
-        // Shader sources (vertex shader passes position and color; fragment shader uses
-        // a uniform "alpha")
+        // Define the crosshair vertices (two lines crossing at the center)
+        float[] crosshairVertices = {
+                -0.02f, 0.0f, // Left end of horizontal line
+                0.02f, 0.0f, // Right end of horizontal line
+                0.0f, -0.02f, // Bottom end of vertical line
+                0.0f, 0.02f // Top end of vertical line
+        };
+
+        // Create VAO and VBO for the crosshair
+        int uiVAO = glGenVertexArrays();
+        int uiVBO = glGenBuffers();
+        glBindVertexArray(uiVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+        FloatBuffer buffer = MemoryUtil.memAllocFloat(crosshairVertices.length);
+        buffer.put(crosshairVertices).flip();
+        glBufferData(GL_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
+        MemoryUtil.memFree(buffer);
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * Float.BYTES, 0);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+        // Create ECS entity and attach the UIComponent.
+        int crosshairEntity = ecs.createEntity();
+        ecs.addComponent(crosshairEntity, new UIComponent(uiVAO, 4));
+
+        // Shader sources (vertex shader passes position and color; fragment shader
+        // usesa uniform "alpha")
         String vertexShaderSource = "#version 330 core\n" +
                 "layout (location = 0) in vec3 aPos;\n" +
                 "layout (location = 1) in vec3 aColor;\n" +
@@ -133,8 +165,8 @@ public class FPSGame {
         camera.target.set(0, 0, -1);
 
         renderer = new Renderer(shader, camera, ecs);
+        uiRenderer = new UIRenderer();
         weapon = new Rifle();
-
 
         lastFrameTime = (float) glfwGetTime();
     }
@@ -349,10 +381,18 @@ public class FPSGame {
 
             renderer.render();
 
+            List<Map<Class<? extends Component>, Component>> uiEntities = new ArrayList<>();
+            for (Map<Class<? extends Component>, Component> comps : ecs.getEntities().values()) {
+                if (comps.containsKey(UIComponent.class)) {
+                    uiEntities.add(comps);
+                }
+            }
+            uiRenderer.render(uiEntities);
+
             glfwSwapBuffers(window);
             glfwPollEvents();
 
-            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
                 weapon.fire(ecs, physicsWorld, bulletMesh, playerTransform.x, playerTransform.y, playerTransform.z,
                         0.0f, 0.0f, -1.0f);
             }
