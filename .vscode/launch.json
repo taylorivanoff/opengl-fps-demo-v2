@@ -10,7 +10,7 @@
       "request": "launch",
       "mainClass": "com.example.FPSGame",
       "vmArgs": "-XstartOnFirstThread",
-      "projectName": "demo"
+      "projectName": "opengl-fps-demo-v2"
     }
   ]
 }
