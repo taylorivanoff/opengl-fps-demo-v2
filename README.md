@@ -14,16 +14,15 @@ This is a basic first-person shooter (FPS) implemented in Java using LWJGL for O
 - Java 17 or later
 - LWJGL 3
 - jBullet Physics
-- Gradle or Maven for dependency management
+- Maven for dependency management
 
 ### Building & Running
 1. **Clone the repository:**
    ```sh
-   git clone https://github.com/opengl-fps-demo-v2/fps-game.git
-   cd fps-game
+   git clone https://github.com/taylorivanoff/opengl-fps-demo-v2.git
    ```
 2. **Install dependencies with maven **
 
 ## Controls
 - **WASD** - Move forward, backward, left, right
-- **Left Click** - Fire bullets
+- **Space** - Fire bullets
