@@ -63,14 +63,17 @@ public class FPSGame {
         // Create player entity (used for input and camera)
         playerEntity = ecs.createEntity();
         ecs.addComponent(playerEntity, new TransformComponent(0.0f, 0.0f, 3.0f));
+        ecs.addComponent(playerEntity, new ColliderComponent(1.0f, 1.0f, 1.0f));
+        ecs.addComponent(playerEntity, new HealthComponent(100));
         playerController = new PlayerController(playerEntity, ecs);
 
         // Create a cube entity as a static scene object
+        cubeMesh = createCubeMesh();
         int cubeEntity = ecs.createEntity();
         ecs.addComponent(cubeEntity, new TransformComponent(0.0f, 0.0f, -5.0f));
-        cubeMesh = createCubeMesh();
         ecs.addComponent(cubeEntity, new MeshComponent(cubeMesh));
         ecs.addComponent(cubeEntity, new ColliderComponent(1.0f, 1.0f, 1.0f));
+        ecs.addComponent(cubeEntity, new HealthComponent(100));
 
         // Create a shared bullet mesh.
         bulletMesh = createCubeMesh();
@@ -187,8 +190,8 @@ public class FPSGame {
 
     private void checkCollisions() {
         List<Integer> bulletsToRemove = new ArrayList<>();
+        List<Integer> entitiesToRemove = new ArrayList<>();
 
-        // Iterate over a snapshot copy of the entities
         for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> bulletEntry : new ArrayList<>(
                 ecs.getEntities().entrySet())) {
             int bulletId = bulletEntry.getKey();
@@ -201,7 +204,6 @@ public class FPSGame {
             TransformComponent bulletTransform = (TransformComponent) bulletComps.get(TransformComponent.class);
             ColliderComponent bulletCollider = (ColliderComponent) bulletComps.get(ColliderComponent.class);
 
-            // Iterate over a snapshot copy for the inner loop too.
             for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> otherEntry : new ArrayList<>(
                     ecs.getEntities().entrySet())) {
                 int otherId = otherEntry.getKey();
@@ -221,14 +223,24 @@ public class FPSGame {
 
                 if (checkCollision(bulletTransform, bulletCollider, otherTransform, otherCollider)) {
                     bulletsToRemove.add(bulletId);
+
                     spawnExplosion(bulletTransform.x, bulletTransform.y, bulletTransform.z);
+
+                    HealthComponent health = (HealthComponent) otherComps.get(HealthComponent.class);
+                    if (health != null) {
+                        health.health--;
+                        if (health.health <= 0) {
+                            entitiesToRemove.add(otherId);
+                        }
+                    }
                     break;
                 }
             }
         }
-        for (int id : bulletsToRemove) {
+        for (int id : bulletsToRemove)
             ecs.removeEntity(id);
-        }
+        for (int id : entitiesToRemove)
+            ecs.removeEntity(id);
     }
 
     private void updateExplosions(float dt) {
