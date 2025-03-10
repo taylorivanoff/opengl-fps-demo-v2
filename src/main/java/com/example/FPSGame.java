@@ -12,14 +12,19 @@ import org.lwjgl.opengl.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
+import com.bulletphysics.collision.shapes.*;
+import com.bulletphysics.dynamics.*;
+import com.bulletphysics.linearmath.*;
 import com.example.components.*;
 import com.example.entities.*;
 import com.example.input.*;
+import com.example.physics.*;
 import com.example.rendering.*;
 
 public class FPSGame {
     private long window;
     private ECSRegistry ecs;
+    private PhysicsWorld physicsWorld;
     private PlayerController playerController;
     private Renderer renderer;
     private Weapon weapon;
@@ -57,8 +62,9 @@ public class FPSGame {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+        
         ecs = new ECSRegistry();
+        physicsWorld = new PhysicsWorld();
 
         // Create player entity (used for input and camera)
         playerEntity = ecs.createEntity();
@@ -68,12 +74,31 @@ public class FPSGame {
         playerController = new PlayerController(playerEntity, ecs);
 
         // Create a cube entity as a static scene object
+        // Create a box shape for a wall (dimensions are half-extents)
+        BoxShape wallShape = new BoxShape(new javax.vecmath.Vector3f(5f, 2.5f, 0.5f));
+
+        // Set up the transform for the wall's position
+        Transform wallTransform = new Transform();
+        wallTransform.setIdentity();
+        wallTransform.origin.set(0f, 2.5f, -10f);
+
+        // Static objects use zero mass
+        float mass = 0f;
+        Vector3f inertia = new Vector3f(0, 0, 0);
+        DefaultMotionState wallMotionState = new DefaultMotionState(wallTransform);
+        RigidBodyConstructionInfo wallRbInfo = new RigidBodyConstructionInfo(mass, wallMotionState, wallShape);
+        RigidBody wallBody = new RigidBody(wallRbInfo);
+
+        // Add the wall body to the physics world
+        physicsWorld.addRigidBody(wallBody);
+
         cubeMesh = createCubeMesh();
         int cubeEntity = ecs.createEntity();
         ecs.addComponent(cubeEntity, new TransformComponent(0.0f, 0.0f, -5.0f));
         ecs.addComponent(cubeEntity, new MeshComponent(cubeMesh));
         ecs.addComponent(cubeEntity, new ColliderComponent(1.0f, 1.0f, 1.0f));
         ecs.addComponent(cubeEntity, new HealthComponent(100));
+        ecs.addComponent(cubeEntity, new PhysicsComponent(wallBody));
 
         // Create a shared bullet mesh.
         bulletMesh = createCubeMesh();
@@ -109,6 +134,7 @@ public class FPSGame {
 
         renderer = new Renderer(shader, camera, ecs);
         weapon = new Rifle();
+
 
         lastFrameTime = (float) glfwGetTime();
     }
@@ -237,8 +263,14 @@ public class FPSGame {
                 }
             }
         }
-        for (int id : bulletsToRemove)
-            ecs.removeEntity(id);
+        for (int entityId : bulletsToRemove) {
+            PhysicsComponent physComp = ecs.getComponent(entityId, PhysicsComponent.class);
+            if (physComp != null) {
+                physicsWorld.removeRigidBody(physComp.rigidBody);
+            }
+            ecs.removeEntity(entityId);
+        }
+
         for (int id : entitiesToRemove)
             ecs.removeEntity(id);
     }
@@ -261,8 +293,31 @@ public class FPSGame {
             }
         }
 
-        for (int id : toRemove) {
-            ecs.removeEntity(id);
+        for (int entityId : toRemove) {
+            PhysicsComponent physComp = ecs.getComponent(entityId, PhysicsComponent.class);
+            if (physComp != null) {
+                physicsWorld.removeRigidBody(physComp.rigidBody);
+            }
+            ecs.removeEntity(entityId);
+        }
+    }
+
+    private void updatePhysics(float dt) {
+        physicsWorld.stepSimulation(dt);
+
+        // Update ECS TransformComponent from the physics simulation:
+        for (Map.Entry<Integer, Map<Class<? extends Component>, Component>> entry : ecs.getEntities().entrySet()) {
+            Map<Class<? extends Component>, Component> comps = entry.getValue();
+            PhysicsComponent physComp = (PhysicsComponent) comps.get(PhysicsComponent.class);
+            TransformComponent transform = (TransformComponent) comps.get(TransformComponent.class);
+            if (physComp != null && transform != null) {
+                Transform trans = new Transform();
+                physComp.rigidBody.getMotionState().getWorldTransform(trans);
+                javax.vecmath.Vector3f pos = trans.origin;
+                transform.x = pos.x;
+                transform.y = pos.y;
+                transform.z = pos.z;
+            }
         }
     }
 
@@ -286,6 +341,8 @@ public class FPSGame {
             TransformComponent playerTransform = ecs.getComponent(playerEntity, TransformComponent.class);
             camera.position.set(playerTransform.x, playerTransform.y, playerTransform.z);
 
+            updatePhysics(dt);
+
             updateBullets(dt);
             checkCollisions();
             updateExplosions(dt);
@@ -296,7 +353,7 @@ public class FPSGame {
             glfwPollEvents();
 
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-                weapon.fire(ecs, bulletMesh, playerTransform.x, playerTransform.y, playerTransform.z,
+                weapon.fire(ecs, physicsWorld, bulletMesh, playerTransform.x, playerTransform.y, playerTransform.z,
                         0.0f, 0.0f, -1.0f);
             }
         }
