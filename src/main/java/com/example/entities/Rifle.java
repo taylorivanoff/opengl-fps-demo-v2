@@ -1,12 +1,12 @@
 package com.example.entities;
 
-import org.joml.*;
+import org.joml.Vector3f;
 
 import com.bulletphysics.collision.shapes.SphereShape;
 import com.bulletphysics.linearmath.DefaultMotionState;
 import com.bulletphysics.linearmath.Transform;
 import com.example.components.*;
-import com.example.physics.*;
+import com.example.physics.PhysicsWorld;
 import com.example.rendering.Mesh;
 
 public class Rifle extends Weapon {
@@ -54,7 +54,5 @@ public class Rifle extends Weapon {
 
         // Optionally, add a collider component if needed.
         ecs.addComponent(bulletEntity, new ColliderComponent(0.2f, 0.2f, 0.2f));
-
-        System.out.println("Bullet fired with JBullet physics!");
     }
 }

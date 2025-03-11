@@ -66,7 +66,7 @@ public class FPSGame {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 
-        window = glfwCreateWindow(1280, 720, "V2 FPS Shooting AI Physics", NULL, NULL);
+        window = glfwCreateWindow(1280, 720, "OpenGL FPS Demo v2", NULL, NULL);
 
         if (window == NULL)
             throw new RuntimeException("Failed to create GLFW window");
